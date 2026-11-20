@@ -1,0 +1,49 @@
+name: Upload files to up.sb
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_url:
+        description: "Direct URL of the file to upload"
+        required: true
+        type: string
+      filename:
+        description: "Optional output filename"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download source file
+        env:
+          FILE_URL: ${{ inputs.file_url }}
+          OUTPUT_NAME: ${{ inputs.filename }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$FILE_URL" =~ ^https?:// ]]; then
+            echo "::error::file_url must be an HTTP(S) URL"
+            exit 1
+          fi
+          name="$OUTPUT_NAME"
+          if [[ -z "$name" ]]; then
+            name="$(basename "${FILE_URL%%\?*}")"
+          fi
+          if [[ -z "$name" || "$name" == "." || "$name" == "/" ]]; then
+            name="upload.bin"
+          fi
+          curl --fail --location --retry 3 --retry-delay 2 "$FILE_URL" --output "$name"
+          echo "UPLOAD_FILE=$name" >> "$GITHUB_ENV"
+          ls -lh "$name"
+
+      - name: Upload to up.sb
+        run: |
+          set -euo pipefail
+          echo "::error::up.sb upload endpoint and request format must be verified before enabling this step."
+          echo "Downloaded file: $UPLOAD_FILE"
+          echo "No upload was attempted."
+          exit 1
