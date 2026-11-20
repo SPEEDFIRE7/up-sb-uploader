@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       file_url:
-        description: "Direct URL of the file to upload"
+        description: "Direct HTTP(S) URL of the file to upload"
         required: true
         type: string
       filename:
@@ -40,10 +40,17 @@ jobs:
           echo "UPLOAD_FILE=$name" >> "$GITHUB_ENV"
           ls -lh "$name"
 
-      - name: Upload to up.sb
+      - name: Upload file to up.sb
         run: |
           set -euo pipefail
-          echo "::error::up.sb upload endpoint and request format must be verified before enabling this step."
-          echo "Downloaded file: $UPLOAD_FILE"
-          echo "No upload was attempted."
-          exit 1
+          echo "Uploading $UPLOAD_FILE to up.sb..."
+          response="$(curl --fail-with-body --show-error --silent --retry 2 --upload-file "$UPLOAD_FILE" https://up.sb)"
+          echo "up.sb response:"
+          printf '%s\n' "$response"
+          {
+            echo "## up.sb upload result"
+            echo
+            echo '```text'
+            printf '%s\n' "$response"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
